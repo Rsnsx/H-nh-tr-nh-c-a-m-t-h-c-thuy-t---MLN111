@@ -81,6 +81,11 @@ dialog[open]{animation:fi .35s}
 .yr{margin:-8px 0 0 124px;font-size:13px;color:#999}.note{max-width:40em;color:#aaa;font-size:14px;border-left:2px solid var(--g);padding-left:14px;margin:28px 0}#refs{padding:60px 6vw 90px;background:var(--k2)}#refs h2{font-size:clamp(30px,5vw,48px);margin-bottom:14px}#refs h3{font-size:20px;color:var(--g);margin:26px 0 8px}#refs ul{max-width:46em;color:#ccc;padding-left:20px}#refs li{margin:6px 0}#refs .td{color:#F0B34A}body:has(dialog[open]){overflow:hidden}#cap.all{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;text-align:left;max-width:1000px}#cap.all b{font-size:20px}
 @media(max-width:640px){.yr{margin-left:94px}#hero{padding-left:16vw}.ph{width:130px}.row{grid-template-columns:80px 1fr}.pin text{font-size:21px}.pin circle{r:7}#cap b{font-size:24px}}
 @media(prefers-reduced-motion:reduce){#map{height:auto}#map .st{position:static;height:auto;padding-bottom:40px}#ctl{display:none}*,*:before{animation:none!important;transition:none!important;scroll-behavior:auto!important}.nd,.sc{opacity:1;transform:none}.merge path{stroke-dashoffset:0}.merge h2{opacity:1}}
+
+/* Render performance */
+.ch,.s45,#legacy{content-visibility:auto;contain-intrinsic-size:900px;}
+#map svg{contain:layout paint;}
+#route{transform-box:fill-box;}
 </style></head><body>
 <div id="bar"></div>
 <nav aria-label="Các chương"><a href="#hero">Hành trình</a><a href="#c-marx">Marx</a><a href="#c-engels">Engels</a><a href="#c-mxe">Marx × Engels</a><a href="#c-lenin">Lenin</a><a href="#c-hcm">Hồ Chí Minh</a><a href="#legacy">Di sản</a></nav>
@@ -149,7 +154,73 @@ const D=[
 {y:'02.09.1945',p:'Hà Nội · Ba Đình',t:'Tuyên ngôn Độc lập',s:'Lời tuyên bố độc lập trước nhân dân cả nước.',c:'Ngày 2.9.1945 tại Hà Nội, Hồ Chí Minh đọc Tuyên ngôn Độc lập.',m:'Một mốc lịch sử của dân tộc.',f:'Thời cơ, lực lượng và tổ chức hội tụ, tạo bước chuyển lớn của cách mạng.',i:'tuyenngon.jpg',sc:'1945'},
 {y:'1946–1969',p:'Việt Nam',t:'Sau 1945: hành trình không dừng lại',s:'Hành trình không dừng lại ở 1945.',c:'Sau 1945 là cuộc kháng chiến toàn quốc (từ 12.1946), chiến thắng Điện Biên Phủ (1954) và các giai đoạn xây dựng, đấu tranh tiếp theo.',m:'Một tư tưởng tiếp tục được vận dụng trong điều kiện mới.',f:'Phủ định của phủ định: kế thừa và phát triển.',i:'after1945.jpg'},
 {y:'02.09.1969',p:'Hà Nội',t:'Hồ Chí Minh qua đời',s:'Hành trình của một cá nhân khép lại, tư tưởng vẫn tiếp tục vận động.',c:'Người mất ngày 2.9.1969 tại Hà Nội.',m:'Hành trình của cá nhân khép lại, tư tưởng tiếp tục vận động.',f:'Kế thừa và phát triển trong điều kiện mới.',i:'1969.jpg',dead:1}]}];
-const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)],RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
+/* =========================================================
+   RENDER CONFIG
+   Chỉ cần chỉnh object này để kiểm soát chất lượng render.
+   quality: "high" | "balanced" | "low"
+   ========================================================= */
+const RENDER_CONFIG = {
+  quality: "high",
+
+  // Chuyển động
+  motion: "auto",              // "auto" | "full" | "reduced"
+  routeDuration: 14000,        // ms: thời gian "Tự chạy hành trình"
+  revealDuration: 700,         // ms: reveal timeline
+  revealThreshold: 0.20,       // IntersectionObserver
+
+  // SVG / map
+  mapHeightVh: 100,
+  routeStrokeWidth: 3.5,
+  routeShadow: true,
+
+  // Ảnh
+  imageLoading: "lazy",        // "lazy" | "eager"
+  imageDecoding: "async",      // "async" | "auto" | "sync"
+
+  // Hiệu năng
+  passiveEvents: true,
+  observeResize: true,
+  updateOnScroll: true,
+
+  // Debug
+  debug: false
+};
+
+const RENDER_PRESETS = {
+  high: {
+    routeShadow: true,
+    revealThreshold: 0.20
+  },
+  balanced: {
+    routeShadow: true,
+    revealThreshold: 0.12
+  },
+  low: {
+    routeShadow: false,
+    revealThreshold: 0.05
+  }
+};
+
+const RENDER = {
+  ...RENDER_CONFIG,
+  ...(RENDER_PRESETS[RENDER_CONFIG.quality] || RENDER_PRESETS.high)
+};
+
+const SYSTEM_REDUCED_MOTION =
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const RM =
+  RENDER.motion === "reduced" ||
+  (RENDER.motion === "auto" && SYSTEM_REDUCED_MOTION);
+
+if (RENDER.debug) {
+  console.info("[MLN111 Render]", {
+    quality: RENDER.quality,
+    reducedMotion: RM,
+    routeDuration: RENDER.routeDuration
+  });
+}
 const SC={
 '1844':()=>`<li class="sc merge"><svg viewBox="0 0 600 160" aria-hidden="true"><path d="M10 15C200 15 230 85 300 85"/><path d="M590 15C400 15 370 85 300 85"/><path d="M300 85V150"/></svg><h2>HỘI TỤ</h2><p>1844 · Paris: hai tuyến nhập thành một.</p></li>`,
 '1920':()=>`<li class="sc paper s20" data-s="0"><h3>Paris, 1920</h3><div class="tg"><button class="on" data-s="0">Trước</button><button data-s="1">Sau</button></div><article class="a0">Khát vọng độc lập đã rõ, bản yêu sách năm 1919 chưa mở ra lối thoát. Con đường nào cho dân tộc?</article><article class="a1">Giải phóng dân tộc gắn với cách mạng vô sản và phong trào cách mạng thế giới: một lựa chọn con đường.</article></li>`,
@@ -163,7 +234,7 @@ const REMOTE={
 const CR={
 'capital.jpg':'Bìa <i>Das Kapital</i>, quyển I (Hamburg, 1867). Bản lưu tại Zentralbibliothek Zürich. Wikimedia Commons, public domain.',
 'manifesto.jpg':'Bìa ấn bản đầu tiên <i>Manifest der Kommunistischen Partei</i> (London, 2.1848). Wikimedia Commons: File:Communist-manifesto.png (CC BY-SA 3.0 / GFDL theo trang mô tả).'};
-const pic=(k,alt='')=>{const a=alt.replace(/"/g,'&quot;');if(IMG[k])return `<img src="${IMG[k].s}" alt="${a}">${IMG[k].c?'<small>'+IMG[k].c+'</small>':''}`;return `<img src="${REMOTE[k]||'images/'+k}" alt="${a}" loading="lazy" onerror="var m=this.closest('.md');if(m){m.remove()}else{this.parentNode.textContent='Cần bổ sung chân dung: ${k}'}">${CR[k]?'<small>'+CR[k]+'</small>':''}`};
+const pic=(k,alt='')=>{const a=alt.replace(/"/g,'&quot;');if(IMG[k])return `<img src="${IMG[k].s}" alt="${a}">${IMG[k].c?'<small>'+IMG[k].c+'</small>':''}`;return `<img src="${REMOTE[k]||'images/'+k}" alt="${a}" loading="${RENDER.imageLoading}" decoding="${RENDER.imageDecoding}" onerror="var m=this.closest('.md');if(m){m.remove()}else{this.parentNode.textContent='Cần bổ sung chân dung: ${k}'}">${CR[k]?'<small>'+CR[k]+'</small>':''}`};
 const ch=$('#ch');
 D.forEach(c=>{const s=document.createElement('section');s.className='ch '+c.k;s.id='c-'+c.id;s.dataset.n='';
 s.innerHTML=`<div class="hd"><div class="ph">${pic(c.img,'Chân dung '+c.name)}</div><div><h2>${c.name}</h2><p class="life">${c.life}</p><p class="lead">${c.lead}</p></div></div><ol class="tl">${c.id=='mxe'?SC['1844']():''}${c.nodes.map((n,i)=>`<li class="nd${n.dead?' dead':''}"><button data-c="${c.id}" data-i="${i}"><b>${n.y}</b><span class="pl">${n.p}</span><h3>${n.t}</h3><p>${n.s}</p><em>Xem chi tiết</em></button></li>${n.sc?SC[n.sc]():''}`).join('')}</ol>`;ch.append(s)});
@@ -171,20 +242,21 @@ const dlg=$('#dlg');
 ch.addEventListener('click',e=>{const b=e.target.closest('.nd button');if(b){const n=D.find(c=>c.id==b.dataset.c).nodes[b.dataset.i];$('#my').textContent=n.y+' · '+n.p;$('#mt').textContent=n.t;$('#mbd').innerHTML=`<h4>Bối cảnh</h4><p>${n.c}</p><h4>Điều gì xảy ra?</h4><p>${n.s}</p><h4>Ý nghĩa lịch sử</h4><p>${n.m}</p><h4>Liên hệ MLN111</h4><p>${n.f}</p><div class="md">${pic(n.i,n.t)}</div>`;dlg.showModal();return}
 const t=e.target.closest('.s20 .tg button');if(t){const w=t.closest('.s20');w.dataset.s=t.dataset.s;$$('.tg button',w).forEach(x=>x.classList.toggle('on',x==t))}});
 dlg.addEventListener('click',e=>{if(e.target==dlg)dlg.close()});
-const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target)}}),{threshold:.2});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target)}}),{threshold:RENDER.revealThreshold});
 $$('.nd,.sc').forEach(e=>io.observe(e));
 const nav=$$('nav a'),io2=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){nav.forEach(a=>a.classList.toggle('on',a.getAttribute('href')=='#'+e.target.id));const on=nav.find(a=>a.classList.contains('on')),nb=$('nav');if(on)nb.scrollTo({left:on.offsetLeft-nb.clientWidth/2+on.clientWidth/2})}}),{rootMargin:'-45% 0px -50% 0px'});
 $$('[data-n]').forEach(e=>io2.observe(e));
 const P=[['Đức',375,150,'Marx và Engels sinh ra ở vùng Rhine, nước Đức.'],['Paris',240,205,'Nơi hai tuyến gặp nhau (1844) và nơi Nguyễn Ái Quốc tiếp cận luận cương của Lenin (1920).'],['Brussels',275,170,'Giai đoạn viết chung của Marx và Engels.'],['London',205,145,'Marx nghiên cứu và viết Tư bản; Engels cộng tác.'],['Nga',560,100,'Lenin đưa lý luận vào tổ chức và cách mạng.'],['Moscow',545,150,'Nguyễn Ái Quốc đến nghiên cứu (1923–24).'],['Quảng Châu',790,310,'Chuẩn bị lý luận, tổ chức, cán bộ (1924–27).'],['Việt Nam',770,385,'Tư tưởng đi vào thực tiễn cách mạng Việt Nam.']];
 let d='M'+P[0][1]+' '+P[0][2];for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],mx=(a[1]+b[1])/2;d+=`C${mx} ${a[2]} ${mx} ${b[2]} ${b[1]} ${b[2]}`}
-const rt=$('#route');rt.setAttribute('d',d);$('#ghost').setAttribute('d',d);
+const rt=$('#route');rt.setAttribute('d',d);$('#ghost').setAttribute('d',d);rt.setAttribute('stroke-width',RENDER.routeStrokeWidth);
 $('#pins').innerHTML=P.map(p=>`<g class="pin"><circle cx="${p[1]}" cy="${p[2]}" r="5"/><text x="${p[1]+10}" y="${p[2]-9}">${p[0]}</text></g>`).join('');
 if(innerWidth<640)$('#map svg').setAttribute('viewBox','170 70 760 350');const LEN=rt.getTotalLength();rt.style.strokeDasharray=LEN;
 function upd(){const m=$('#map').getBoundingClientRect();let p=RM?1:Math.min(1,Math.max(0,-m.top/(m.height-innerHeight)));rt.style.strokeDashoffset=LEN*(1-p);const pt=rt.getPointAtLength(LEN*p);$('#dot').setAttribute('cx',pt.x);$('#dot').setAttribute('cy',pt.y);$('#ring').setAttribute('cx',pt.x);$('#ring').setAttribute('cy',pt.y);$('#hint').style.opacity=p<.04?1:.0;const k=Math.min(P.length-1,Math.round(p*(P.length-1)));$$('.pin').forEach((e,i)=>e.classList.toggle('on',i<=k));if(RM){const c=$('#cap');if(!c.classList.contains('all')){c.classList.add('all');c.innerHTML=P.map(q=>`<div><b>${q[0]}</b><p>${q[3]}</p></div>`).join('')}}else if(k!==window._k){window._k=k;$('#cap').innerHTML=`<b>${P[k][0]}</b><p>${P[k][3]}</p>`}
 const h=document.documentElement;$('#bar').style.width=scrollY/(h.scrollHeight-innerHeight)*100+'%'}
 let stop=0;['wheel','touchstart','keydown'].forEach(e=>addEventListener(e,()=>stop=1,{passive:true}));
 $('#play').onclick=()=>{const m=$('#map'),a=m.offsetTop+2,z=m.offsetTop+m.offsetHeight-innerHeight-2,t0=performance.now(),DUR=14000;stop=0;scrollTo({top:a,behavior:'instant'});const st=n=>{if(stop)return;const k=Math.min(1,(n-t0)/DUR);scrollTo({top:a+(z-a)*k,behavior:'instant'});if(k<1)requestAnimationFrame(st)};requestAnimationFrame(st)};
-addEventListener('scroll',upd,{passive:true});addEventListener('resize',upd);upd();
+if(RENDER.updateOnScroll)addEventListener('scroll',upd,{passive:RENDER.passiveEvents});if(RENDER.observeResize)addEventListener('resize',upd);upd();
+if(!RENDER.routeShadow)$('#route').style.filter='none';
 const L=[['Marx',1818,1883],['Engels',1820,1895],['Lenin',1870,1924],['Hồ Chí Minh',1890,1969]];
 $('#mem').innerHTML=L.map(l=>`<div class="row"><span>${l[0]}</span><div class="tr"><i style="left:${(l[1]-1818)/151*100}%;width:${(l[2]-l[1])/151*100}%"></i></div></div><div class="yr">${l[1]} – ${l[2]}</div>`).join('')+'<p style="color:#999;font-size:14px">Mỗi thanh dừng lại ở một năm, đường thời gian vẫn tiếp tục.</p>';
 </script></body></html>
