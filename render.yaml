@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: mln111-hanh-trinh-hoc-thuyet
+    runtime: static
+    buildCommand: >-
+      mkdir -p public &&
+      cp "Hành trình của một học thuyết - MLN111(1).html" public/index.html
+    staticPublishPath: ./public
